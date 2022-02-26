@@ -34,53 +34,65 @@ class kth_arm_bandit:
                 self.T[i][0] += 1
             self.T[i][1] = self.Q[self.A]
 
-    def banditData(self,epslon,actualVal,selectData):
-        for i in range(self.maxIter):
+    def banditData(self,epslon,sampleData):
+        self.T = np.zeros([len(sampleData), 2])
+        for i in range(len(sampleData)):
             tempProb = random.uniform(0,1)
             if tempProb <= (1 - epslon):
-                if self.Q[np.argmax(self.Q)] == 0:
-                    self.A = random.randint(0,9)
-                else:
-                    self.A = np.argmax(self.Q)
+                self.A = np.argmax(self.Q)
             else:
                 self.A = random.randint(0,9)
             # R_t ~ N(q_*(a),1)
-            R = np.random.normal(loc=self.actualVal[self.A], scale=1)
+            R = np.random.normal(sampleData[i][self.A],1)
             self.N[self.A] += 1
             self.Q[self.A] = self.Q[self.A] + ((1/self.N[self.A])*(R-self.Q[self.A]))
-            if self.A == np.argmax(self.actualVal):
+            if self.A == 4:
                 self.T[i][0] += 1
             self.T[i][1] = self.Q[self.A]
 
-def bandit_machine(eplson):
-    maxIter = 3000
-    avgRewardDist = np.zeros([maxIter,2])
+def bandit_machine(eplson,df):
+    maxIter = 2000
+    df = df.sample(frac=1)
+    sampleData = df.to_numpy()
+    if sampleData.any():
+        df = df.sample(frac=1)
+        sampleData = df.to_numpy()
+        avgRewardDist = np.zeros([maxIter,2])
+        for i in range(maxIter):
+            test_arm = kth_arm_bandit()
+            test_arm.banditData(eplson,sampleData)
+            for j in range(maxIter):
+                avgRewardDist[j][0] += test_arm.T[j][0]
+                avgRewardDist[j][1] += test_arm.T[j][1]
+            print(i)
 
-    for i in range(maxIter):
-        test_arm = kth_arm_bandit()
-        test_arm.bandit(eplson)
-        for j in range(maxIter):
-            avgRewardDist[j][0] += test_arm.T[j][0]
-            avgRewardDist[j][1] += test_arm.T[j][1]
-        print(i)
+        for i in range(len(avgRewardDist)):
+            avgRewardDist[i][0] /= maxIter
+            avgRewardDist[i][1] /= maxIter
+    else:
+        avgRewardDist = np.zeros([maxIter, 2])
+        for i in range(maxIter):
+            test_arm = kth_arm_bandit()
+            test_arm.bandit(eplson)
+            for j in range(maxIter):
+                avgRewardDist[j][0] += test_arm.T[j][0]
+                avgRewardDist[j][1] += test_arm.T[j][1]
+            print(i)
 
-    for i in range(len(avgRewardDist)):
-        avgRewardDist[i][0] /= maxIter
-        avgRewardDist[i][1] /= maxIter
+        for i in range(len(avgRewardDist)):
+            avgRewardDist[i][0] /= maxIter
+            avgRewardDist[i][1] /= maxIter
     return avgRewardDist
 
 
-# Part 1
 
 
 # Part 2
 df = pd.read_csv('Ads_Optimisation.csv')
-maxIter = df.shape[0]
-dfCopy = df.transpose()
-test= list(df.columns)
-dfCopy["actualVals"]=df[test].sum(axis=1)
-actualVals = dfCopy.to_numpy()
-
-print(df)
+bandit_epslon_0 = bandit_machine(0,df)
+bandit_epslon_0_01 = bandit_machine(0.01,df)
+bandit_epslon_0_1 = bandit_machine(0.1,df)
+#test_arm.banditData(0.01,sampleData)
+#test_arm.banditData(0.1,sampleData)
 
 print("Done")
